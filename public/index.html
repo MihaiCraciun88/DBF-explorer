@@ -30,7 +30,7 @@ $(document).ready(function() {
         }
     });
 
-    // check hesh
+    // check hash
     let lastHash = '';
     setInterval(() => {
         let newHash = location.hash;
@@ -53,7 +53,6 @@ $(document).ready(function() {
                         
                         table.append(row);
                     }
-                    console.log(response);
                     $('#file_table').html(table);
                 }
             });
