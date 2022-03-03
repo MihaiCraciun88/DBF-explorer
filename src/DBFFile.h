@@ -48,8 +48,12 @@ public:
 	DBFFile(const char* filepath);
 	~DBFFile();
 
-	std::vector<DBFFile::Field> GetFields();
+	std::vector<DBFFile::Field>& GetFields();
 	json GetRecords();
+	json GetHeader();
+	bool Insert(json& data);
+	bool Update(json& data, int index);
+	void WriteData(json& data, int index);
 private:
 	FILE* pFile = nullptr;
 	Header mHeader;
