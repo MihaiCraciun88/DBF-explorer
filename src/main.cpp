@@ -32,6 +32,25 @@ int main(int argc, const char** argv)
 		}
 		res.set_content(table.dump().c_str(), "application/json");
 	});
+	svr.Put("/api/table", [](const httplib::Request&, httplib::Response& res, const httplib::ContentReader& content_reader) {
+		std::string body;
+		content_reader([&](const char* data, size_t data_length) {
+			body.append(data, data_length);
+			return true;
+		});
+		json postData = json::parse(body);
+		try
+		{
+			DBFFile file(postData["table"].get<std::string>().c_str());
+			file.Update(postData["data"], postData["index"].get<int>());
+		}
+		catch (Exception& e)
+		{
+			printf("Exception: %s\n", e.what());
+		}
+
+		res.set_content(postData.dump().c_str(), "application/json");
+	});
 
 	svr.listen(serverIp, serverPort);
 
