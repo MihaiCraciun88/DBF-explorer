@@ -62,6 +62,12 @@ $(document).ready(function() {
                             col.html(item[j]);
                             row.append(col);
                         }
+                        {
+                            let col = $('<td/>');
+                            col.addClass('col-actions');
+                            col.html('<button type="button" class="btn btn-primary btn-sm btn-update">Update</button>');
+                            row.append(col);
+                        }
                         
                         tbody.append(row);
                     }
@@ -72,6 +78,32 @@ $(document).ready(function() {
             lastHash = newHash;
         }
     }, 500);
+    
+    // update row
+    $(document).on('click', '.btn-update', function () {
+        let th = $(this), postData = {};
+        postData.index = th.closest('tr').data('index');
+        postData.table = location.hash.replace('#file=', '');
+        postData.data = {};
+        th.closest('tr').find('>td').each(function () {
+            let td = $(this);
+            if (td.hasClass('col-actions')) {
+                return;
+            }
+            postData.data[td.data('name')] = td.text();
+        });
+        console.log(postData);
+        $.ajax({
+            url: '/api/table',
+            method: 'PUT',
+            data: JSON.stringify(postData),
+            contentType: "application/json; charset=utf-8",
+            dataType: 'JSON',
+            success: function (response) {
+                console.log(response);
+            }
+        });
+    });
 });
 </script>
 </body>
