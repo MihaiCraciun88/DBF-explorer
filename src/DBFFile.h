@@ -45,7 +45,7 @@ public:
 		char reserved2[12];
 	};
 
-	DBFFile(const char* filepath);
+	DBFFile(std::string filepath);
 	~DBFFile();
 
 	std::vector<DBFFile::Field>& GetFields();
@@ -54,6 +54,7 @@ public:
 	bool Insert(json& data);
 	bool Update(json& data, int index);
 	void WriteData(json& data, int index);
+	static DBFFile Create(std::string filepath, std::vector<Field> fields);
 private:
 	FILE* pFile = nullptr;
 	Header mHeader;

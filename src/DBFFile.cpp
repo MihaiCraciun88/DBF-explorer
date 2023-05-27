@@ -1,8 +1,8 @@
 #include "DBFFile.h"
 
-DBFFile::DBFFile(const char* filepath)
+DBFFile::DBFFile(std::string filepath)
 {
-	fopen_s(&pFile, filepath, "r+b");
+	fopen_s(&pFile, filepath.c_str(), "r+b");
 	if (pFile == NULL)
 	{
 		throw Exception("Cannot open file");
@@ -160,4 +160,54 @@ void DBFFile::WriteData(json& data, int index)
 		}
 		fwrite(buffer, field.length, 1, pFile);
 	}
+}
+
+DBFFile DBFFile::Create(std::string filepath, std::vector<Field> fields)
+{
+	FILE* file = NULL;
+	fopen_s(&file, filepath.c_str(), "w+b");
+	if (file == NULL)
+	{
+		throw Exception("Cannot open file");
+	}
+
+	// write header
+	Header header;
+	header.type = 0;
+	header.lastUpdate[0] = 0;
+	header.lastUpdate[1] = 0;
+	header.lastUpdate[2] = 0;
+	header.numRecords = 0;
+	header.headerSize = 33;
+	header.recordSize = 0;
+	header.flagProduction = 0;
+	header.languageDriverId = 0;
+	for (int i = 0; i < 15; i++)
+	{
+		header.reserved[i] = 0;
+	}
+	for (int i = 0; i < 2; i++)
+	{
+		header.reserved2[i] = 0;
+	}
+	fwrite(&header, sizeof(header), 1, file);
+
+	// write fields
+	fseek(file, 32, SEEK_SET);
+	for (Field& field : fields)
+	{
+		fwrite(&field, sizeof(field), 1, file);
+		header.headerSize += 32;
+	}
+	char eoh = 0x0D;
+	fwrite(&eoh, sizeof(eoh), 1, file);
+	
+
+	// add header size
+	fseek(file, 8, SEEK_SET);
+	fwrite(&header.headerSize, sizeof(header.headerSize), 1, file);
+
+	fclose(file);
+
+	return DBFFile(filepath);
 }

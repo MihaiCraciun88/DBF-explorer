@@ -2,76 +2,239 @@
 <html class="h-100">
 <head>
 <title>DBF explorer</title>
-<link href="https://cdn.jsdelivr.net/npm/bootstrap@5.0.2/dist/css/bootstrap.min.css" rel="stylesheet" integrity="sha384-EVSTQN3/azprG1Anm3QDgpJLIm9Nao0Yz1ztcQTwFspd3yD65VohhpuuCOmLASjC" crossorigin="anonymous">
+<link href="/css/bootstrap.min.css" rel="stylesheet">
 </head>
 <body class="h-100">
 <main class="container vh-100">
-    <div class="row h-100">
+    <div class="row h-100 py-3">
         <div class="col-3 h-100">
+            <button class="btn btn-primary mb-3" data-bs-toggle="modal" data-bs-target="#modal-add-table">+ Add table</button>
             <div id="file_list" style="overflow-y:auto;height:500px;"></div>
         </div>
         <div class="col-9 h-100">
+            <button class="btn btn-primary mb-3 action-add-row">+ Add row</button>
             <div id="file_table" class="table-responsive h-100" style="overflow-y:auto;"></div>
         </div>
     </div>
 </main>
-<script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+
+ <div class="modal" tabindex="-1" id="modal-add-table">
+  <div class="modal-dialog">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title">+ Add table</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+      </div>
+      <div class="modal-body">
+          <div class="row mb-3">
+              <div class="col">Table Name: </div>
+              <div class="col"><input class="form-control form-control-sm" name="table-name"></div>
+          </div>
+          <p class="d-flex">Add new Column <button type="button" class="btn btn-sm btn-primary table-add-column ms-auto">+</button></p>
+      </div>
+      <div class="modal-footer border-0">
+        <button type="button" class="btn btn-sm btn-light" data-bs-dismiss="modal">Close</button>
+        <button type="button" class="btn btn-sm btn-primary table-save">Save changes</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script src="/js/jquery.min.js"></script>
+<script src="/js/bootstrap.min.js"></script>
 <script>
 $(document).ready(function() {
     $.ajax({
         url: '/api/files',
-        dataType: 'JSON',
-        success: function(response) {
-            let fileList = $('#file_list');
-            fileList.html('');
-            for (let i in response) {
-                fileList.append('<div><a href="#file=' + response[i] + '">' + response[i] + '</a></div>');
-            }
+        dataType: 'JSON'
+    }).done(function (response) {
+        let fileList = $('#file_list');
+        fileList.html('');
+        for (let i in response) {
+            fileList.append(`<div><a href="#file=${response[i]}">${response[i]}</a></div>`);
         }
     });
 
     // check hash
     let lastHash = '';
     setInterval(() => {
-        let newHash = location.hash;
-        if (newHash !== lastHash) {
-            $.ajax({
-                url: '/api/table/' + newHash.replace('#file=', ''),
-                dataType: 'JSON',
-                success: function(response) {
-                    let table = $('<table/>');
-                    table.attr('class', 'table table-bordered table-striped');
-                    {
-                        let row = $('<tr/>');
-                        for (let i in response.header.fields) {
-                            let col = $('<th/>');
-                            col.html(response.header.fields[i].name);
-                            row.append(col);
-                        }
-                        table.append($('<thead/>').append(row));
-                    }
+        if (location.hash === lastHash) {
+            return;
+        }
 
-                    let tbody = $('<tbody/>');
-                    table.append(tbody);
-                    for (let i in response.records) {
-                        let item = response.records[i];
-                        let row = $('<tr/>');
-                        
-                        for (let j in item) {
-                            let col = $('<td/>');
-                            col.html(item[j]);
-                            row.append(col);
-                        }
-                        
-                        tbody.append(row);
-                    }
-                    console.log(response);
-                    $('#file_table').html(table);
+        $.ajax({
+            url: '/api/table/' + location.hash.replace('#file=', ''),
+            dataType: 'JSON'
+        }).done(function (response) {
+            let table = $('<table/>');
+            table.attr('id', 'results')
+            table.data('info', response);
+            table.attr('class', 'table table-bordered table-striped');
+            {
+                let row = $('<tr/>');
+                for (let i in response.header.fields) {
+                    let col = $('<th/>');
+                    col.attr('data-name', response.header.fields[i].name);
+                    col.html(response.header.fields[i].name);
+                    row.append(col);
+                }
+                {
+                    let col = $('<th/>');
+                    col.addClass('col-actions');
+                    col.html('Actions');
+                    row.append(col);
+                }
+                table.append($('<thead/>').append(row));
+            }
+
+            let tbody = $('<tbody/>');
+            table.append(tbody);
+            for (let i in response.records) {
+                let item = response.records[i];
+                let row = $('<tr/>').attr('data-index', i);
+
+                for (let j in item) {
+                    let col = $('<td/>');
+                    col.attr('data-name', response.header.fields[j].name);
+                    col.attr('contenteditable', 'true');
+                    col.html(item[j]);
+                    row.append(col);
+                }
+                {
+                    let col = $('<td/>');
+                    col.addClass('col-actions');
+                    col.html('<button type="button" class="btn btn-primary btn-sm btn-update">Update</button>');
+                    row.append(col);
+                }
+
+                tbody.append(row);
+            }
+            console.log(response);
+            $('#file_table').html(table);
+        });
+        lastHash = location.hash;
+    }, 500);
+
+    // action add row
+    $('.action-add-row').on('click', function () {
+        let table = $('#results'), postData = table.data('info');
+        postData.row = {};
+        for (let field of postData.header.fields) {
+            postData.row[field.name] = 'test';
+        }
+        $.ajax({
+            url: '/api/table/' + location.hash.replace('#file=', ''),
+            method: 'POST',
+            data: JSON.stringify(postData),
+            contentType: "application/json; charset=utf-8",
+            dataType: 'JSON'
+        }).done(function (response) {
+            location.reload();
+        });
+    });
+
+    // update row
+    $(document).on('click', '.btn-update', function () {
+        let th = $(this), postData = {};
+        postData.index = th.closest('tr').data('index');
+        postData.data = {};
+        th.closest('tr').find('>td').each(function () {
+            let td = $(this);
+            if (td.hasClass('col-actions')) {
+                return;
+            }
+            postData.data[td.data('name')] = td.text();
+        });
+        $.ajax({
+            url: '/api/table/' + location.hash.replace('#file=', ''),
+            method: 'PUT',
+            data: JSON.stringify(postData),
+            contentType: "application/json; charset=utf-8",
+            dataType: 'JSON'
+        }).done(function (response) {
+            console.log(response);
+        });
+    });
+
+    // add new table
+    (function () {
+        let modal = $('#modal-add-table');
+        modal.find('.modal-body').append(getTemplate());
+        modal.find('.table-add-column').on('click', function () {
+            modal.find('.modal-body').append(getTemplate());
+        });
+        modal.on('click', '.table-delete-column', function () {
+            let th = $(this);
+            if (confirm('Are you sure?')) {
+                th.closest('.table-column').remove();
+            }
+        });
+        modal.find('.table-save').on('click', function () {
+            let columns = modal.find('.table-column'),
+                postData = {},
+                tableName = modal.find('[name="table-name"]').val(),
+                hasError = tableName === '';
+            postData.header = {
+                date: [0, 0, 0],
+                fields: [],
+                size: 0
+            };
+            postData.row = {};
+
+            columns.each(function (index, column) {
+                let th = $(column), field = {};
+                field.name         = th.find('[name="name"]').val();
+                field.type         = th.find('[name="type"]').val();
+                field.decimalCount = parseInt(th.find('[name="decimalCount"]').val());
+                field.length       = parseInt(th.find('[name="length"]').val());
+                postData.header.fields.push(field);
+
+                if (field.name === '' || isNaN(field.decimalCount) || isNaN(field.length)) {
+                    hasError = true;
                 }
             });
-            lastHash = newHash;
+
+            if (!hasError) {
+                $.ajax({
+                    url: '/api/table/' + tableName,
+                    method: 'POST',
+                    data: JSON.stringify(postData),
+                    contentType: "application/json; charset=utf-8",
+                    dataType: 'JSON'
+                }).done(function (response) {
+
+                });
+
+                columns.remove();
+                modal.modal('hide');
+                modal.find('.modal-body').append(getTemplate());
+                location.reload();
+            }
+        });
+
+        function getTemplate() {
+            return `<div class="row mb-3 table-column">
+                <div class="col-5">
+                    <input type="text" class="form-control form-control-sm" name="name" placeholder="name">
+                </div>
+                <div class="col-2">
+                    <select class="form-select form-select-sm" name="type">
+                        <option>C</option>
+                        <option>N</option>
+                    </select>
+                </div>
+                <div class="col-2">
+                    <input type="number" class="form-control form-control-sm" name="decimalCount" placeholder="decimalCount" value="0">
+                </div>
+                <div class="col-2">
+                    <input type="number" class="form-control form-control-sm" name="length" placeholder="length">
+                </div>
+                <div class="col-1">
+                    <button type="button" class="btn-close table-delete-column"></button>
+                </div>
+            </div>`;
         }
-    }, 500);
+    })();
 });
 </script>
 </body>
